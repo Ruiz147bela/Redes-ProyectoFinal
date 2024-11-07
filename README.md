@@ -1,6 +1,6 @@
 # Portal Cautivo - Proyecto de Autenticación Básica y Registro de Actividad
 
-Este proyecto implementa un portal cautivo en un entorno local utilizando **MAMP**, **PHP**, y **MySQL**. El sistema incluye autenticación de usuarios, registro de actividad, control de sesiones, y una interfaz gráfica sencilla.
+Este proyecto implementa un portal cautivo en un entorno local utilizando **MAMP**, **PHP**, y **MySQL**. El sistema incluye autenticación de usuarios, registro de actividad, control de sesiones con tiempo de expiración, y una interfaz gráfica sencilla.
 
 ## Requisitos
 
@@ -13,13 +13,13 @@ Este proyecto implementa un portal cautivo en un entorno local utilizando **MAMP
 - **`htdocs/`**: Carpeta principal del proyecto (ubicada en `/Applications/MAMP/htdocs` en Mac).
   - `index.html`: Página de inicio de sesión.
   - `register.html`: Página de registro de usuarios.
-  - `success.html`: Página de bienvenida tras iniciar sesión correctamente.
-  - `error.html`: Página de error para credenciales incorrectas.
+  - `success.php`: Página de bienvenida tras iniciar sesión correctamente. Controla la expiración de la sesión.
   - `styles.css`: Archivo CSS para el diseño.
   - `register.php`: Script para registrar nuevos usuarios.
   - `login.php`: Script para verificar las credenciales y registrar el acceso.
   - `logout.php`: Script para calcular la duración de la sesión y cerrarla.
-- **Base de datos**: Base de datos `registro_actividad` con tablas `usuarios` y `registros_acceso`.
+  - `check_session.php`: Script auxiliar para verificar el estado de la sesión y permitir la redirección automática con JavaScript.
+- **Base de datos**: Base de datos `registro_actividad` con tablas `usuarios`, `registros_acceso` y `sesiones`.
 
 ## Instalación y Configuración
 
@@ -55,8 +55,19 @@ Este proyecto implementa un portal cautivo en un entorno local utilizando **MAMP
        user_id INT(11),
        tiempo_entrada DATETIME DEFAULT CURRENT_TIMESTAMP,
        ip_address VARCHAR(45),
-       duracion INT(11),
        FOREIGN KEY (user_id) REFERENCES usuarios(id)
+     );
+     ```
+
+   - **Tabla `sesiones`**:
+     ```sql
+     CREATE TABLE sesiones (
+       id INT(11) AUTO_INCREMENT PRIMARY KEY,
+       user_id INT(11),
+       registro_acceso_id INT(11),
+       duracion INT(11),
+       FOREIGN KEY (user_id) REFERENCES usuarios(id),
+       FOREIGN KEY (registro_acceso_id) REFERENCES registros_acceso(id)
      );
      ```
 
@@ -71,8 +82,15 @@ Este proyecto implementa un portal cautivo en un entorno local utilizando **MAMP
 
 3. **Inicio de Sesión**:
    - Después de registrarte, inicia sesión en `index.html` con las credenciales creadas.
-   - Si el inicio de sesión es exitoso, serás redirigido a `success.html`.
+   - Si el inicio de sesión es exitoso, serás redirigido a `success.php`.
    - Si el inicio de sesión falla, serás redirigido a `error.html`.
+
+### Control de Expiración de Sesión y Redirección Automática
+
+- **Tiempo de Expiración de Sesión**: En `login.php`, la sesión se configura para expirar después de un tiempo determinado (10 segundos para pruebas).
+- **Verificación Automática de Expiración en `success.php`**: 
+   - La página `success.php` verifica la expiración de la sesión al cargarse y redirige automáticamente al usuario a `index.html` si la sesión ha expirado.
+   - JavaScript en `success.php` verifica periódicamente el estado de la sesión llamando a `check_session.php`. Si la sesión ha expirado, JavaScript redirige al usuario a `index.html`.
 
 ## Estructura de la Base de Datos
 
@@ -88,10 +106,20 @@ Este proyecto implementa un portal cautivo en un entorno local utilizando **MAMP
 
 | Columna         | Tipo      | Descripción                                        |
 |-----------------|-----------|----------------------------------------------------|
-| `id`            | INT       | ID del registro (Primary Key)                      |
+| `id`            | INT       | ID del registro de acceso (Primary Key)            |
 | `user_id`       | INT       | ID del usuario (clave foránea a `usuarios(id)`)    |
 | `tiempo_entrada`| DATETIME  | Hora de inicio de sesión (por defecto actual)      |
 | `ip_address`    | VARCHAR   | Dirección IP desde la que el usuario se conecta    |
-| `duracion`      | INT       | Duración de la sesión en segundos                  |
+
+### Tabla `sesiones`
+
+| Columna            | Tipo      | Descripción                                        |
+|--------------------|-----------|----------------------------------------------------|
+| `id`               | INT       | ID de la sesión (Primary Key)                      |
+| `user_id`          | INT       | ID del usuario (clave foránea a `usuarios(id)`)    |
+| `registro_acceso_id` | INT     | ID del registro de acceso (clave foránea a `registros_acceso(id)`) |
+| `duracion`         | INT       | Duración de la sesión en segundos                  |
 
 ---
+
+Este proyecto implementa un sistema básico de autenticación y control de acceso que puede ser útil en redes educativas o de pequeña escala para regular el acceso y monitorear la actividad de los usuarios.
